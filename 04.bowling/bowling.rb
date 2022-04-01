@@ -55,13 +55,12 @@ class Frame
 
     score = score == 'X' ? TOTAL_PIN_COUNT_IN_1_FRAME : score
 
-    unless @first_shot_score
+    if @first_shot_score.nil?
       @first_shot_score = score
-      @frame_score += @first_shot_score
-      return
+    else
+      @second_shot_score = score
     end
-    @second_shot_score = score
-    @frame_score += @second_shot_score
+    @frame_score += score
   end
 
   def spare?
