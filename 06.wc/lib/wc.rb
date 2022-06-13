@@ -22,41 +22,35 @@ end
 class WC
   def initialize(param)
     @options = param[:options]
-    @target_files = param[:files]
-    @strings = obtain_target_strings(@target_files)
-    @lines = @strings.map(&:length)
-    @words = []
-    @bytesizes = obtain_bytesizes(@target_files)
-
-    @strings.each do |string|
-      @words << string.map do |line|
-        line.split(/[\s　]+/).length
-      end.sum
+    @strings = obtain_target_strings(param[:files])
+    @outputs = {}
+    @outputs[:lines] = @strings.map(&:length)
+    unless @options[:l]
+      @outputs[:words] = []
+      @strings.each do |string|
+        @outputs[:words] << string.map do |line|
+          line.split(/[\s　]+/).length
+        end.sum
+      end
+      @outputs[:bytesizes] = obtain_bytesizes(param[:files])
     end
+    @outputs[:target_files] = param[:files]
 
-    return if @target_files.size <= 1
+    return if @outputs[:target_files].size <= 1
 
-    @lines << @lines.sum
-    @words << @words.sum
-    @bytesizes << @bytesizes.sum
-    @target_files << 'total'
+    @outputs[:lines] << @outputs[:lines].sum
+    @outputs[:words] << @outputs[:words].sum
+    @outputs[:bytesizes] << @outputs[:bytesizes].sum
+    @outputs[:target_files] << 'total'
   end
 
   def output_wc_results
-    outputs = []
-    outputs << @lines
-    unless @options[:l]
-      outputs << @words
-      outputs << @bytesizes
-    end
-    outputs << @target_files
-
-    if @target_files.empty?
-      puts outputs.join(' ')
+    if @outputs[:target_files].empty?
+      puts @outputs.values.join(' ')
     else
-      formatted_outputs = outputs.map.with_index do |string, i|
+      formatted_outputs = @outputs.values.map.with_index do |string, i|
         # 最後の列（ファイル名）以外は右揃えにする
-        i == outputs.size - 1 ? string : fit_to_longest_item(string, right_aligned: true)
+        i == @outputs.size - 1 ? string : fit_to_longest_item(string, right_aligned: true)
       end.transpose
       formatted_outputs.each { |item| puts item.join(' ') }
     end
