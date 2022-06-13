@@ -1,17 +1,18 @@
 # frozen_string_literal: true
 
+require 'optparse'
+
 def main
   param = {}
-  param[:options] = []
+  param[:options] = {}
+  opts = OptionParser.new
+  opts.on('-l') { |_v| param[:options][:l] = true }
+  opts.parse!(ARGV)
+
   param[:files] = []
 
   ARGV.each do |option|
-    case option
-    when /^-[a-zA-Z]+/
-      param[:options] << option
-    else
-      param[:files] << option
-    end
+    param[:files] << option if option != /^-[a-zA-Z]+/
   end
 
   wc = WC.new(**param)
@@ -23,13 +24,12 @@ class WC
     @options = param[:options]
     @target_files = param[:files]
     @strings = obtain_target_strings(@target_files)
-    @lines = []
-    @word_count = []
+    @lines = @strings.map(&:length)
+    @words = []
     @bytesizes = obtain_bytesizes(@target_files)
 
     @strings.each do |string|
-      @lines << string.length
-      @word_count << string.map do |line|
+      @words << string.map do |line|
         line.split(/[\s　]+/).length
       end.sum
     end
@@ -37,7 +37,7 @@ class WC
     return if @target_files.size <= 1
 
     @lines << @lines.sum
-    @word_count << @word_count.sum
+    @words << @words.sum
     @bytesizes << @bytesizes.sum
     @target_files << 'total'
   end
@@ -45,8 +45,8 @@ class WC
   def output_wc_results
     outputs = []
     outputs << @lines
-    unless @options.grep(/l/).length >= 1
-      outputs << @word_count
+    unless @options[:l]
+      outputs << @words
       outputs << @bytesizes
     end
     outputs << @target_files
@@ -65,29 +65,23 @@ class WC
   private
 
   def obtain_target_strings(files)
-    target_string = []
-    if files.empty?
-      target_string << $stdin.readlines
-    else
-      files.each do |file|
-        target_string << File.new(file).readlines
-      end
+    return [$stdin.readlines] if files.empty?
+
+    files.map do |file|
+      File.new(file).readlines
     end
-    target_string
   end
 
   def obtain_bytesizes(files)
-    bytesizes = []
     if files.empty?
-      @strings.each do |string|
-        bytesizes << string.join.bytesize
+      @strings.map do |string|
+        string.join.bytesize
       end
     else
-      files.each do |file|
-        bytesizes << File.size(file)
+      files.map do |file|
+        File.size(file)
       end
     end
-    bytesizes
   end
 
   # 配列の各要素の長さを最大の要素の幅に合わせる（短い要素の末尾に半角スペースを追加する）
